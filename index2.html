@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tres en Raya - Modos de Juego</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .contenedor {
+            text-align: center;
+            color: #fff;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 40px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00f, 0 0 20px #00f, 0 0 30px #00f;
+        }
+
+        .tablero {
+            display: grid;
+            grid-template-columns: repeat(3, 120px);
+            grid-template-rows: repeat(3, 120px);
+            gap: 10px;
+            margin: 0 auto;
+            display: none; /* Oculto hasta que se seleccione un modo de juego */
+        }
+
+        .celda {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 48px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            background-color: #111;
+            border: 2px solid #222;
+            box-shadow: 0 0 15px #222;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .celda:hover {
+            box-shadow: 0 0 15px #fff, 0 0 25px #fff;
+        }
+
+        .x {
+            color: #ff1744;
+            text-shadow: 0 0 10px #ff1744, 0 0 20px #ff1744, 0 0 30px #ff1744;
+            animation: neonX 0.5s ease-in-out;
+        }
+
+        .o {
+            color: #00e5ff;
+            text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 30px #00e5ff;
+            animation: neonO 0.5s ease-in-out;
+        }
+
+        @keyframes neonX {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes neonO {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .mensaje {
+            font-size: 24px;
+            margin-top: 20px;
+            text-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff, 0 0 30px #00e5ff;
+        }
+
+        .oculto {
+            display: none;
+        }
+
+        .boton {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #00e5ff;
+            color: #000;
+            font-size: 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            box-shadow: 0 0 10px #00e5ff, 0 0 20px #00e5ff;
+        }
+
+        .boton:hover {
+            background-color: #00b8d4;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Resaltar celdas ganadoras */
+        .celda-ganadora {
+            background-color: #4caf50;
+            box-shadow: 0 0 25px #4caf50, 0 0 35px #4caf50;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="contenedor">
+        <h1>Tres en Raya</h1>
+
+        <!-- Selección de modo de juego -->
+        <div class="menu" id="menu">
+            <button class="boton" onclick="iniciarJuego('ia')">Un Jugador (vs IA)</button>
+            <button class="boton" onclick="iniciarJuego('dos-jugadores')">Dos Jugadores</button>
+        </div>
+
+        <!-- Tablero de juego -->
+        <div id="tablero" class="tablero"></div>
+
+        <div class="mensaje oculto" id="mensaje"></div> <!-- Oculto por defecto -->
+        <button class="boton" style="display:none;" id="boton-reiniciar" onclick="reiniciarJuego()">Reiniciar Juego</button>
+        <button class="boton" style="display:none;" id="boton-volver" onclick="volver()">Volver</button>
+    </div>
+
+    <script>
+        const elementoTablero = document.getElementById('tablero');
+        const elementoMensaje = document.getElementById('mensaje');
+        const elementoMenu = document.getElementById('menu');
+        const botonReiniciar = document.getElementById('boton-reiniciar');
+        const botonVolver = document.getElementById('boton-volver');
+        let tablero = Array(9).fill(null);
+        let jugadorActual = 'X';
+        let juegoActivo = true;
+        let modoJuego = ''; // 'ia' o 'dos-jugadores'
+
+        // Crear el tablero
+        function crearTablero() {
+            elementoTablero.innerHTML = '';
+            tablero.forEach((celda, indice) => {
+                const celdaElemento = document.createElement('div');
+                celdaElemento.classList.add('celda');
+                celdaElemento.setAttribute('data-indice', indice);
+                celdaElemento.addEventListener('click', manejarClick);
+                if (celda === 'X') {
+                    celdaElemento.classList.add('x');
+                    celdaElemento.innerText = 'X';
+                } else if (celda === 'O') {
+                    celdaElemento.classList.add('o');
+                    celdaElemento.innerText = 'O';
+                }
+                elementoTablero.appendChild(celdaElemento);
+            });
+        }
+
+        // Iniciar el juego
+        function iniciarJuego(modo) {
+            modoJuego = modo;
+            elementoMenu.style.display = 'none'; // Ocultar el menú
+            elementoTablero.style.display = 'grid'; // Mostrar el tablero
+            botonReiniciar.style.display = 'block'; // Mostrar el botón de reiniciar
+            botonVolver.style.display = 'block'; // Mostrar el botón de volver
+            elementoMensaje.classList.remove('oculto'); // Mostrar el mensaje de turno
+            reiniciarJuego(); // Comenzar un nuevo juego
+        }
+
+        // Manejar el click del jugador
+        function manejarClick(evento) {
+            const indice = evento.target.getAttribute('data-indice');
+            if (!tablero[indice] && juegoActivo) {
+                tablero[indice] = jugadorActual;
+                evento.target.classList.add(jugadorActual.toLowerCase());
+                evento.target.innerText = jugadorActual;
+
+                if (comprobarGanador()) {
+                    juegoActivo = false;
+                    elementoMensaje.innerText = `${jugadorActual} ha ganado!`;
+                } else if (tablero.every(celda => celda)) {
+                    juegoActivo = false;
+                    elementoMensaje.innerText = '¡Es un empate!';
+                } else {
+                    jugadorActual = jugadorActual === 'X' ? 'O' : 'X';
+                    elementoMensaje.innerText = `Turno de ${jugadorActual}`;
+                    
+                    if (modoJuego === 'ia' && jugadorActual === 'O') {
+                        setTimeout(movimientoIA, 500); // La IA juega después de un pequeño retraso
+                    }
+                }
+            }
+        }
+
+        // Movimiento de la IA (Algoritmo Minimax para dificultad)
+        function movimientoIA() {
+            const mejorMovimiento = minimax(tablero, 'O').indice;
+            const celdaIA = document.querySelector(`[data-indice='${mejorMovimiento}']`);
+            tablero[mejorMovimiento] = 'O';
+            celdaIA.classList.add('o');
+            celdaIA.innerText = 'O';
+            jugadorActual = 'X';
+            elementoMensaje.innerText = `Turno de ${jugadorActual}`;
+            if (comprobarGanador()) {
+                juegoActivo = false;
+                elementoMensaje.innerText = `La IA ha ganado!`;
+            }
+        }
+
+        // Algoritmo Minimax para IA
+        function minimax(nuevoTablero, jugador) {
+            const casillasDisponibles = nuevoTablero.map((celda, indice) => celda === null ? indice : null).filter(indice => indice !== null);
+
+            const ganador = evaluarTablero(nuevoTablero);
+            if (ganador === 'X') return { puntuacion: -10 };
+            if (ganador === 'O') return { puntuacion: 10 };
+            if (casillasDisponibles.length === 0) return { puntuacion: 0 };
+
+            const movimientos = [];
+            for (let i = 0; i < casillasDisponibles.length; i++) {
+                const movimiento = {};
+                movimiento.indice = casillasDisponibles[i];
+                nuevoTablero[casillasDisponibles[i]] = jugador;
+
+                if (jugador === 'O') {
+                    const resultado = minimax(nuevoTablero, 'X');
+                    movimiento.puntuacion = resultado.puntuacion;
+                } else {
+                    const resultado = minimax(nuevoTablero, 'O');
+                    movimiento.puntuacion = resultado.puntuacion;
+                }
+
+                nuevoTablero[casillasDisponibles[i]] = null;
+                movimientos.push(movimiento);
+            }
+
+            let mejorMovimiento;
+            if (jugador === 'O') {
+                let mejorPuntuacion = -Infinity;
+                for (let i = 0; i < movimientos.length; i++) {
+                    if (movimientos[i].puntuacion > mejorPuntuacion) {
+                        mejorPuntuacion = movimientos[i].puntuacion;
+                        mejorMovimiento = i;
+                    }
+                }
+            } else {
+                let mejorPuntuacion = Infinity;
+                for (let i = 0; i < movimientos.length; i++) {
+                    if (movimientos[i].puntuacion < mejorPuntuacion) {
+                        mejorPuntuacion = movimientos[i].puntuacion;
+                        mejorMovimiento = i;
+                    }
+                }
+            }
+
+            return movimientos[mejorMovimiento];
+        }
+
+        // Evaluar el tablero para encontrar al ganador
+        function evaluarTablero(tablero) {
+            const combinacionesGanadoras = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Horizontal
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Vertical
+                [0, 4, 8], [2, 4, 6]             // Diagonal
+            ];
+
+            for (let [a, b, c] of combinacionesGanadoras) {
+                if (tablero[a] && tablero[a] === tablero[b] && tablero[a] === tablero[c]) {
+                    return tablero[a];
+                }
+            }
+            return null;
+        }
+
+        // Comprobar si hay un ganador
+        function comprobarGanador() {
+            const combinacionesGanadoras = [
+                [0, 1, 2], [3, 4, 5], [6, 7, 8], // Horizontal
+                [0, 3, 6], [1, 4, 7], [2, 5, 8], // Vertical
+                [0, 4, 8], [2, 4, 6]             // Diagonal
+            ];
+
+            let ganador = null;
+
+            combinacionesGanadoras.some(combinacion => {
+                const [a, b, c] = combinacion;
+                if (tablero[a] && tablero[a] === tablero[b] && tablero[a] === tablero[c]) {
+                    ganador = jugadorActual;
+                    resaltarCeldasGanadoras([a, b, c]);
+                    return true;
+                }
+                return false;
+            });
+
+            return ganador;
+        }
+
+        // Resaltar las celdas ganadoras
+        function resaltarCeldasGanadoras(celdas) {
+            celdas.forEach(indice => {
+                document.querySelectorAll('.celda')[indice].classList.add('celda-ganadora');
+            });
+        }
+
+        // Reiniciar el juego
+        function reiniciarJuego() {
+            tablero = Array(9).fill(null);
+            jugadorActual = 'X';
+            juegoActivo = true;
+            elementoMensaje.innerText = `Turno de ${jugadorActual}`;
+            crearTablero();
+        }
+
+        // Volver al menú principal
+        function volver() {
+            reiniciarJuego();
+            elementoMenu.style.display = 'flex'; // Mostrar el menú
+            elementoTablero.style.display = 'none'; // Ocultar el tablero
+            botonReiniciar.style.display = 'none'; // Ocultar el botón de reiniciar
+            botonVolver.style.display = 'none'; // Ocultar el botón de volver
+            elementoMensaje.classList.add('oculto'); // Ocultar el mensaje de turno
+        }
+
+        // Inicializar el juego con el menú
+        reiniciarJuego();
+    </script>
+</body>
+</html>
